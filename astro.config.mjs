@@ -8,6 +8,7 @@ export default defineConfig({
 		starlight({
 			title: 'Condrix',
 			description: 'Distributed AI Agent Orchestration Platform',
+			favicon: '/favicon.png',
 			logo: {
 				src: './src/assets/logo.png',
 				replacesTitle: true,
