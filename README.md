@@ -1,6 +1,12 @@
-# Condrix — Website & Documentation
+<p align="center">
+  <img src="public/logo-mini.png" alt="Condrix" width="320">
+</p>
 
-The official website and documentation for [Condrix](https://github.com/anastawfik/condrix), a Distributed AI Agent Orchestration Platform.
+<h3 align="center">Website & Documentation</h3>
+
+<p align="center">
+  The official website and documentation for <a href="https://github.com/anastawfik/condrix">Condrix</a>, a Distributed AI Agent Orchestration Platform.
+</p>
 
 **Live site:** [condrix.dev](https://condrix.dev)
 

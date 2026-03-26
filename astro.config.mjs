@@ -9,9 +9,8 @@ export default defineConfig({
 			title: 'Condrix',
 			description: 'Distributed AI Agent Orchestration Platform',
 			logo: {
-				light: './src/assets/logo-light.svg',
-				dark: './src/assets/logo-dark.svg',
-				replacesTitle: false,
+				src: './src/assets/logo.png',
+				replacesTitle: true,
 			},
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/anastawfik/condrix' },
