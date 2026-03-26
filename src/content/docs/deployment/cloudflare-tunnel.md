@@ -88,10 +88,10 @@ This creates a tunnel and generates a credentials file at `~/.cloudflared/<tunne
 ### Step 3: Add DNS Route
 
 ```bash
-cloudflared tunnel route dns condrix-core core.yourdomain.com
+cloudflared tunnel route dns condrix-core core.condrix.dev
 ```
 
-This creates a CNAME record pointing `core.yourdomain.com` to your tunnel.
+This creates a CNAME record pointing `core.condrix.dev` to your tunnel.
 
 ### Step 4: Configure
 
@@ -102,7 +102,7 @@ tunnel: condrix-core
 credentials-file: /home/user/.cloudflared/<tunnel-id>.json
 
 ingress:
-  - hostname: core.yourdomain.com
+  - hostname: core.condrix.dev
     service: http://localhost:9100
   - service: http_status:404
 ```
@@ -116,7 +116,7 @@ cloudflared tunnel run condrix-core
 Clients connect using:
 
 ```
-wss://core.yourdomain.com
+wss://core.condrix.dev
 ```
 
 ## Environment Variables
