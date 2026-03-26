@@ -1,0 +1,46 @@
+---
+title: Condrix
+description: Distributed AI Agent Orchestration Platform
+template: splash
+hero:
+  tagline: Orchestrate AI coding agents across multiple machines. Start a session on your desktop, check progress from your phone, continue from a laptop — all in real-time.
+  image:
+    file: ../../assets/logo-dark.svg
+  actions:
+    - text: Get Started
+      link: /getting-started/quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/anastawfik/condrix
+      icon: external
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid>
+  <Card title="Multi-Machine Orchestration" icon="laptop">
+    Run AI agent Cores on multiple machines — your desktop, a cloud server, a Raspberry Pi — and manage them all from a single interface. Maestro coordinates work across every Core.
+  </Card>
+  <Card title="Real-Time IDE Experience" icon="rocket">
+    Full coding environment with Monaco editor, integrated terminal, Git operations, and live AI chat. Watch your agents write code, run tests, and commit changes as they happen.
+  </Card>
+  <Card title="Multiple Clients" icon="puzzle">
+    Connect from anywhere: a web browser, a native desktop app (Tauri), a mobile app (React Native), or a terminal CLI (Ink). All clients are stateless and interchangeable.
+  </Card>
+  <Card title="Secure Remote Access" icon="approve-check-circle">
+    Built-in Cloudflare Tunnel integration provides encrypted remote access to your Cores without exposing ports or configuring firewalls. One command to go from local to global.
+  </Card>
+  <Card title="Per-Core OAuth Authentication" icon="setting">
+    Each Core authenticates independently with Claude using OAuth. Sign in through your browser, and the Core handles token refresh automatically. No API keys required.
+  </Card>
+  <Card title="Pluggable AI Providers" icon="random">
+    Ships with Claude support out of the box. The provider architecture is extensible — bring your own models and backends as the ecosystem grows.
+  </Card>
+</CardGrid>
+
+<Aside type="caution" title="Early Development">
+  Condrix is under active development and not yet ready for production use. APIs, configuration formats, and features may change without notice. Contributions and feedback are welcome on [GitHub](https://github.com/anastawfik/condrix).
+</Aside>
