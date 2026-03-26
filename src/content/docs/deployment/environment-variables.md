@@ -77,7 +77,7 @@ These variables are used in `docker-compose.yml` and `.env` files:
 
 ### Example `.env` File
 
-```env
+```bash
 # Core
 CONDRIX_CORE_PORT=9100
 CONDRIX_CORE_HOST=0.0.0.0

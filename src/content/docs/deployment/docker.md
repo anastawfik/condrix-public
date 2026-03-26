@@ -183,7 +183,7 @@ Volumes are preserved across updates. Your workspaces, chat history, and credent
 
 Create a `.env` file alongside `docker-compose.yml` for secrets:
 
-```env
+```bash
 MAESTRO_CORE_SECRET=your-secure-random-secret-here
 ```
 

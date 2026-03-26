@@ -123,7 +123,7 @@ wss://core.yourdomain.com
 
 Configure the Core's tunnel integration via environment variables:
 
-```env
+```bash
 # Tunnel mode: "quick" | "named" | "disabled"
 CONDRIX_CORE_TUNNEL_MODE=quick
 

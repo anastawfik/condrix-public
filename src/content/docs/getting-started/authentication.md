@@ -73,7 +73,7 @@ npm run dev:core
 
 Or add it to a `.env` file in the Core's directory:
 
-```env
+```bash
 CONDRIX_CORE_CLAUDE_API_KEY=sk-ant-api03-...
 ```
 
