@@ -16,6 +16,7 @@ All Condrix services are configured through environment variables. Set them dire
 | `CONDRIX_CORE_NAME` | hostname | Human-readable name shown in client UI |
 | `CONDRIX_CORE_DATA_DIR` | `~/.condrix` | Base directory for workspaces, databases, and config |
 | `CONDRIX_CORE_CLAUDE_API_KEY` | — | Claude API key (alternative to OAuth) |
+| `CONDRIX_CORE_TOKEN` | — | Pre-seeded auth token for Maestro outbound connections and automated deployments |
 | `CONDRIX_CORE_LOG_LEVEL` | `info` | Logging verbosity: `debug`, `info`, `warn`, `error` |
 
 ### Maestro Registration
@@ -23,7 +24,8 @@ All Condrix services are configured through environment variables. Set them dire
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CONDRIX_MAESTRO_URL` | — | Maestro WebSocket URL (e.g., `ws://maestro:9200`) |
-| `CONDRIX_MAESTRO_SECRET` | — | Shared secret for Core-to-Maestro authentication |
+| `CONDRIX_MAESTRO_TOKEN` | — | Registration token (invite code) or permanent token for Core-to-Maestro authentication |
+| `CONDRIX_MAESTRO_SECRET` | — | _(Legacy)_ Shared secret for Core-to-Maestro authentication |
 
 ### TLS
 
@@ -86,7 +88,7 @@ CONDRIX_CORE_LOG_LEVEL=info
 
 # Maestro connection
 CONDRIX_MAESTRO_URL=ws://maestro:9200
-CONDRIX_MAESTRO_SECRET=change-me-to-a-secure-random-string
+CONDRIX_MAESTRO_TOKEN=your-registration-or-permanent-token
 
 # Maestro
 CONDRIX_MAESTRO_PORT=9200

@@ -42,16 +42,22 @@ npm run dev:web
 
 Open your browser to `http://localhost:5173`. You should see the Condrix web interface. The Core will be listed in the sidebar — click it to connect.
 
-### Authenticate with Claude
+### Configure an AI Provider
 
-Before you can start an AI agent session, the Core needs to authenticate with Claude:
+Before you can start an AI agent session, the Core needs at least one AI provider connection. Condrix supports **Claude**, **OpenAI**, **Ollama** (local), and any **OpenAI-compatible endpoint**.
 
 1. Open **Settings** (gear icon) in the web client
-2. Navigate to the **Cores** tab
-3. Click **Sign In with Claude** on your Core
-4. A browser window opens — sign in with your Claude account
-5. Paste the authorization code back into the dialog
-6. The Core is now authenticated and ready to create agent sessions
+2. Navigate to the **AI** tab
+3. Click **Add Connection** and choose a provider:
+   - **Claude (OAuth)** — Sign in with your Claude account (recommended)
+   - **Claude (API Key)** — Paste an Anthropic API key
+   - **OpenAI** — Paste an OpenAI API key
+   - **Local** — Connect to Ollama or LM Studio (default: `localhost:11434`)
+   - **Custom** — Any OpenAI-compatible endpoint with a custom base URL
+4. Follow the provider-specific prompts to complete setup
+5. The Core is now authenticated and ready to create agent sessions
+
+For advanced configuration — including fallback chains and per-project profiles — see [AI Providers](/getting-started/ai-providers/).
 
 ## Option 2: Docker Compose
 
@@ -110,6 +116,7 @@ Open `http://localhost:5173` in your browser.
 
 ## What's Next?
 
-- [Authentication](/getting-started/authentication/) — Learn about OAuth and API key setup
+- [Authentication](/getting-started/authentication/) — AI connections, profiles, and Core auth
+- [AI Providers](/getting-started/ai-providers/) — Multi-provider setup with fallback chains
 - [Architecture Overview](/architecture/overview/) — Understand how the pieces fit together
 - [Environment Variables](/deployment/environment-variables/) — Configure ports, hosts, and features

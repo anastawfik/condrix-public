@@ -16,6 +16,10 @@ Foundation infrastructure — Core daemon, Web Client, and basic Maestro.
 - [x] AI agent sessions with Claude integration
 - [x] Claude OAuth authentication flow
 - [x] Claude Code CLI subprocess for API calls
+- [x] Multi-provider AI support (Claude, OpenAI, Ollama, Custom endpoints)
+- [x] AI Connections and Profiles with fallback chains
+- [x] Registration tokens for secure Core-to-Maestro authentication
+- [x] Token rotation from Maestro UI
 - [x] Terminal management (PTY sessions via node-pty)
 - [x] File operations (read, write, search)
 - [x] Git operations (status, diff, stage, commit)

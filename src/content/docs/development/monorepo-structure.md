@@ -14,8 +14,9 @@ condrix/
 ├── apps/                          # Deployable applications
 │   ├── core/                      # Core agent runtime daemon
 │   │   └── src/
-│   │       ├── managers/          # Domain managers (workspace, agent, terminal, etc.)
-│   │       ├── providers/         # AI provider implementations (Claude)
+│   │       ├── managers/          # Domain managers (workspace, agent, AI connection, etc.)
+│   │       ├── providers/         # AI provider implementations (Claude, OpenAI)
+│   │       ├── tools/             # Tool format adapters for multi-provider support
 │   │       ├── services/          # Infrastructure services (tunnel, auth)
 │   │       └── runtime.ts         # Main entry point
 │   ├── maestro/                   # Orchestration service
@@ -37,11 +38,11 @@ condrix/
 │   ├── protocol/                  # Message types, schemas, interfaces
 │   │   └── src/
 │   │       ├── messages/          # Message envelope definitions
-│   │       ├── schemas/           # Validation schemas
+│   │       ├── schemas/           # Validation schemas (including ai-connection.ts)
 │   │       └── index.ts           # Public API
 │   ├── client-shared/             # Shared React hooks and stores
 │   │   └── src/
-│   │       ├── hooks/             # useCore, useWorkspace, useAgent, etc.
+│   │       ├── hooks/             # useCore, useWorkspace, useAgent, useConnections, etc.
 │   │       └── stores/            # Multi-Core connection store
 │   ├── client-components/         # Shared UI components (shadcn/ui style)
 │   │   └── src/
@@ -63,8 +64,11 @@ The headless agent runtime. Manages workspaces, AI sessions, terminals, files, a
 
 **Key files:**
 - `runtime.ts` — Service initialization and WebSocket server setup
-- `managers/` — Domain-specific managers (WorkspaceManager, AgentManager, etc.)
+- `managers/` — Domain-specific managers (WorkspaceManager, AgentManager, AIConnectionManager, etc.)
+- `managers/ai-connection-manager.ts` — Manages AI connections, profiles, and provider credentials
 - `providers/claude-provider.ts` — Claude AI integration via CLI subprocess
+- `providers/openai-provider.ts` — OpenAI-compatible provider (OpenAI, Local, Custom endpoints)
+- `tools/tool-format-adapter.ts` — Translates tool definitions between provider formats
 
 ### `apps/maestro` — Orchestration Service
 
@@ -96,13 +100,13 @@ VitePress-powered documentation site for architecture docs and guides.
 
 ### `libs/protocol` — Foundation Layer
 
-The most critical package. Defines all message types, schemas, and interfaces used for WebSocket communication. Every other package depends on this.
+The most critical package. Defines all message types, schemas, and interfaces used for WebSocket communication. Every other package depends on this. Includes AI connection and profile schemas (`schemas/ai-connection.ts`) that define the shared types for multi-provider support.
 
 **Rule:** This is the only library that other packages may import for shared types. Apps never import from each other — they communicate via the WebSocket protocol.
 
 ### `libs/client-shared` — Shared Client Logic
 
-React hooks and state stores shared across all client applications (web, desktop, mobile). Includes the multi-Core connection store that manages simultaneous WebSocket connections.
+React hooks and state stores shared across all client applications (web, desktop, mobile). Includes the multi-Core connection store that manages simultaneous WebSocket connections and the `useConnections` hook for managing AI provider connections.
 
 ### `libs/client-components` — Shared UI Components
 

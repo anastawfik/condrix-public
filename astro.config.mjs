@@ -27,6 +27,7 @@ export default defineConfig({
 						{ label: 'Introduction', slug: 'getting-started/introduction' },
 						{ label: 'Quick Start', slug: 'getting-started/quick-start' },
 						{ label: 'Authentication', slug: 'getting-started/authentication' },
+						{ label: 'AI Providers', slug: 'getting-started/ai-providers' },
 					],
 				},
 				{

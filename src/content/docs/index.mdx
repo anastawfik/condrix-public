@@ -33,11 +33,11 @@ import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
   <Card title="Secure Remote Access" icon="approve-check-circle">
     Built-in Cloudflare Tunnel integration provides encrypted remote access to your Cores without exposing ports or configuring firewalls. One command to go from local to global.
   </Card>
-  <Card title="Per-Core OAuth Authentication" icon="setting">
-    Each Core authenticates independently with Claude using OAuth. Sign in through your browser, and the Core handles token refresh automatically. No API keys required.
+  <Card title="Multi-Provider AI" icon="setting">
+    Connect to Claude, OpenAI, Ollama, LM Studio, or any OpenAI-compatible endpoint. Create AI Profiles with automatic fallback chains — if one provider hits a rate limit, Condrix switches to the next without interruption.
   </Card>
-  <Card title="Pluggable AI Providers" icon="random">
-    Ships with Claude support out of the box. The provider architecture is extensible — bring your own models and backends as the ecosystem grows.
+  <Card title="Flexible Authentication" icon="random">
+    Claude OAuth, API keys, local models with no auth, or custom endpoints. Each Core manages its own credentials securely, with registration tokens and token rotation for Maestro connections.
   </Card>
 </CardGrid>
 

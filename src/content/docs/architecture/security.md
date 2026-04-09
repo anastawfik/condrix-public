@@ -86,24 +86,105 @@ For additional client-to-Core security, Condrix supports Time-based One-Time Pas
 
 This protects against unauthorized access if someone discovers your Core's address, especially when using Cloudflare Tunnel or binding to `0.0.0.0`.
 
+## Multi-Provider Authentication
+
+Condrix supports multiple AI providers, each with its own authentication pattern.
+
+### Provider Credentials
+
+| Provider | Credential Type | Storage |
+|----------|----------------|---------|
+| Claude (OAuth) | Access + refresh tokens | `~/.claude/.credentials.json` |
+| Claude (API Key) | Anthropic API key | Core SQLite database |
+| OpenAI | OpenAI API key | Core SQLite database |
+| Local (Ollama) | None | N/A |
+| Custom | Optional API key | Core SQLite database |
+
+All credentials are stored on the Core and never sent to clients. The Core proxies all AI requests, so clients never interact with provider APIs directly.
+
+### Connection Isolation
+
+Each AI Connection is isolated — credentials for one connection cannot be accessed by another. When a fallback chain triggers, the Core authenticates with the next provider using that connection's own credentials.
+
+## Registration Tokens
+
+Condrix uses **registration tokens** (invite codes) for secure Core-to-Maestro authentication. This replaces the previous shared-secret approach.
+
+### Flow
+
+```
+┌───────────────┐   1. Generate token   ┌──────────────┐
+│ Maestro Admin │ ─────────────────────► │   Maestro    │
+└───────────────┘                        └──────┬───────┘
+                                                │
+                                    2. Token: "inv_abc123"
+                                                │
+┌───────────────┐   3. Set env var       ┌──────▼───────┐
+│  Core Admin   │ ─────────────────────► │     Core     │
+│               │  CONDRIX_MAESTRO_TOKEN  │              │
+└───────────────┘  =inv_abc123           └──────┬───────┘
+                                                │
+                                    4. Register with token
+                                                ▼
+                                         ┌──────────────┐
+                                         │   Maestro    │
+                                         │ validates &  │
+                                         │ issues perm  │
+                                         │ token        │
+                                         └──────────────┘
+```
+
+1. A Maestro admin generates a registration token in the Maestro UI
+2. The Core admin sets it as `CONDRIX_MAESTRO_TOKEN` in the Core's environment
+3. The Core presents the token when connecting to Maestro
+4. Maestro validates the token and issues a **permanent access token**
+5. The Core stores the permanent token and uses it for all future connections
+
+Registration tokens are single-use. Once a Core receives its permanent token, the registration token is consumed and cannot be reused.
+
+## CONDRIX_CORE_TOKEN
+
+The `CONDRIX_CORE_TOKEN` environment variable pre-seeds an authentication token on Core startup. This is used for:
+
+- **Maestro outbound connections** — When a Maestro needs to initiate a connection to a Core
+- **Automated deployments** — Where browser-based authentication is not available
+- **CI/CD environments** — Headless Core instances that need a pre-configured identity
+
+```bash
+export CONDRIX_CORE_TOKEN=your-pre-seeded-token
+npm run dev:core
+```
+
+The token is stored in the Core's database on first startup and used for subsequent authentication handshakes.
+
+## Token Rotation
+
+Maestro admins can rotate a Core's permanent access token from the Maestro UI. Use token rotation when:
+
+- A Core's token may have been compromised
+- You want to enforce periodic credential rotation as a security policy
+- A Core is being decommissioned and its token should be invalidated
+
+After rotation, the affected Core automatically receives its new token on the next connection to Maestro. No manual intervention is required on the Core side.
+
 ## Maestro Authentication
 
 Maestro uses separate authentication for its two communication channels.
 
 ### Core to Maestro
 
-When a Core registers with Maestro, it authenticates using a shared secret:
+When a Core registers with Maestro, it authenticates using a **registration token** (see above). For legacy deployments, shared secrets are still supported:
 
 ```bash
 # Core
 CONDRIX_MAESTRO_URL=ws://maestro:9200
-CONDRIX_MAESTRO_SECRET=your-shared-secret
+CONDRIX_MAESTRO_TOKEN=your-registration-token
 
 # Maestro
 CONDRIX_MAESTRO_CORE_SECRET=your-shared-secret
 ```
 
-The Core includes this secret in its registration message. Maestro rejects connections with invalid or missing secrets.
+The Core includes this token in its registration message. Maestro rejects connections with invalid or missing tokens.
 
 ### Client to Maestro
 
@@ -168,8 +249,10 @@ The Core will serve `wss://` instead of `ws://` when TLS certificates are config
 ## Security Best Practices
 
 1. **Never expose a Core to the internet without authentication** — Always use TOTP or Cloudflare Tunnel
-2. **Use OAuth over API keys** — OAuth tokens are short-lived and automatically refreshed
-3. **Rotate Maestro secrets regularly** — Treat them like any shared credential
-4. **Keep Node.js updated** — Condrix requires Node.js 22+ which receives active security patches
-5. **Review connected clients** — The Core tracks all active WebSocket connections; disconnect unknown clients
-6. **Use Cloudflare Tunnel for remote access** — Avoid port forwarding, which bypasses firewall protections
+2. **Use OAuth over API keys when possible** — OAuth tokens are short-lived and automatically refreshed
+3. **Use registration tokens for Core-to-Maestro auth** — Single-use invite codes are more secure than shared secrets
+4. **Rotate Core tokens periodically** — Use the Maestro UI to rotate access tokens on a regular schedule
+5. **Keep Node.js updated** — Condrix requires Node.js 22+ which receives active security patches
+6. **Review connected clients** — The Core tracks all active WebSocket connections; disconnect unknown clients
+7. **Use Cloudflare Tunnel for remote access** — Avoid port forwarding, which bypasses firewall protections
+8. **Store API keys securely** — AI provider API keys are stored in the Core's database; protect the data directory

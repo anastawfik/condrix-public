@@ -100,6 +100,28 @@ CONDRIX_MAESTRO_URL=ws://maestro-host:9200 npm run dev:core
 5. All subsequent messages are proxied through Maestro
 6. The client experience is identical to a direct connection
 
+### Core Registration Flow
+
+Cores authenticate with Maestro using **registration tokens** (invite codes). There are two registration paths:
+
+**From Maestro (admin-initiated):**
+
+1. A Maestro admin registers a Core by providing its URL and a registration token
+2. Maestro connects to the Core and validates the token
+3. The Core is added to the registry
+
+**From Core (self-registration):**
+
+1. A Maestro admin generates a registration token (invite code) in the Maestro UI
+2. The Core admin sets the token as `CONDRIX_MAESTRO_TOKEN` in the Core's environment
+3. The Core connects to Maestro and presents the registration token
+4. Maestro validates the token and issues a **permanent access token** to the Core
+5. The Core stores the permanent token and uses it for all subsequent connections
+
+The registration token is single-use — once a Core has received its permanent token, the invite code is consumed. Maestro admins can rotate a Core's permanent token at any time from the Maestro UI.
+
+See [Security](/architecture/security/) for details on token rotation and the `CONDRIX_CORE_TOKEN` environment variable.
+
 ## Docker Mode
 
 When running all services in Docker Compose, containers communicate over a Docker bridge network.
