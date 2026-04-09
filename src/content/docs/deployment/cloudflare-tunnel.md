@@ -67,50 +67,26 @@ wss://random-words.trycloudflare.com
 
 ## Named Tunnel (Persistent URL)
 
-For a stable URL that persists across restarts, create a named tunnel with a Cloudflare account.
+For a stable URL that persists across restarts, create a named tunnel in the [Cloudflare Zero Trust dashboard](https://one.dash.cloudflare.com/) and pass the token to Condrix. Condrix handles the rest — no local `cloudflared` config files or manual setup needed.
 
-### Step 1: Authenticate
+### Step 1: Create a Tunnel in Cloudflare Dashboard
 
-```bash
-cloudflared tunnel login
-```
+1. Log in to [Cloudflare Zero Trust](https://one.dash.cloudflare.com/)
+2. Go to **Networks** → **Tunnels** → **Create a tunnel**
+3. Choose **Cloudflared** as the connector type
+4. Name your tunnel (e.g., `condrix-core`)
+5. Copy the **tunnel token** from the install page (a long string starting with `ey...`)
+6. Add a **public hostname** (e.g., `core.condrix.dev`) pointing to `http://localhost:9100`
 
-This opens a browser to authenticate with your Cloudflare account.
+### Step 2: Pass the Token to Condrix
 
-### Step 2: Create the Tunnel
-
-```bash
-cloudflared tunnel create condrix-core
-```
-
-This creates a tunnel and generates a credentials file at `~/.cloudflared/<tunnel-id>.json`.
-
-### Step 3: Add DNS Route
+Set the tunnel token as an environment variable — Condrix downloads `cloudflared` automatically and starts the tunnel:
 
 ```bash
-cloudflared tunnel route dns condrix-core core.condrix.dev
-```
-
-This creates a CNAME record pointing `core.condrix.dev` to your tunnel.
-
-### Step 4: Configure
-
-Create `~/.cloudflared/config.yml`:
-
-```yaml
-tunnel: condrix-core
-credentials-file: /home/user/.cloudflared/<tunnel-id>.json
-
-ingress:
-  - hostname: core.condrix.dev
-    service: http://localhost:9100
-  - service: http_status:404
-```
-
-### Step 5: Start the Tunnel
-
-```bash
-cloudflared tunnel run condrix-core
+CONDRIX_CORE_TUNNEL_MODE=named \
+CONDRIX_CORE_TUNNEL_TOKEN=eyJh... \
+CONDRIX_CORE_TUNNEL_AUTO_START=true \
+npm run dev:core
 ```
 
 Clients connect using:
@@ -118,6 +94,8 @@ Clients connect using:
 ```
 wss://core.condrix.dev
 ```
+
+That's it — no local `cloudflared` installation, config files, or DNS commands required. Condrix manages the `cloudflared` binary and tunnel lifecycle.
 
 ## Environment Variables
 

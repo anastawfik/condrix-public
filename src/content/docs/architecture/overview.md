@@ -20,18 +20,20 @@ Condrix is built on a three-layer architecture that separates agent execution, o
 All communication in Condrix uses **WebSocket connections** with a typed message envelope protocol. There are no REST APIs.
 
 ```
-┌─────────┐     WebSocket      ┌──────────┐     WebSocket      ┌─────────┐
-│  Client  │◄──────────────────►│   Core   │◄──────────────────►│ Maestro │
-│ (Web UI) │  Protocol msgs     │ (Daemon) │  Registration +    │ (Coord) │
-└─────────┘                     └──────────┘  relay traffic      └─────────┘
-                                     │
-                                     │ Subprocess
-                                     ▼
-                                ┌──────────┐
-                                │  Claude   │
-                                │  Code CLI │
-                                └──────────┘
+                           Direct Mode
+                    ┌──────────────────────┐
+                    │                      │
+┌─────────┐        │    ┌─────────────┐   │    ┌──────────┐
+│  Client  │◄───────┘    │   Maestro   │◄──┘    │   Core   │
+│ (Web UI) │◄───────────►│   (Relay)   │◄──────►│ (Daemon) │
+└─────────┘  Maestro     └─────────────┘        └──────────┘
+              Mode          Relay +                   │
+                         Registration            AI Providers
+                                              (Claude, OpenAI,
+                                               Ollama, Custom)
 ```
+
+In **Direct Mode**, clients connect straight to a Core. In **Maestro Mode**, clients connect to Maestro, which relays messages to the appropriate Core. Cores register with Maestro and maintain a persistent connection.
 
 ### Message Envelope
 
@@ -71,10 +73,10 @@ A workspace is an isolated environment built from a Git repository. When you cre
 
 Each workspace can have an active AI agent session. The agent:
 
-- Communicates with Claude via a Claude Code CLI subprocess
+- Communicates with the configured AI provider (Claude, OpenAI, Ollama, or any OpenAI-compatible endpoint)
 - Has access to the workspace's files, terminals, and Git
 - Streams responses in real-time to all connected clients
-- Supports extended thinking for complex reasoning tasks
+- Supports automatic fallback chains — if the primary provider fails, the next one in the profile takes over
 
 ### Manager Pattern
 

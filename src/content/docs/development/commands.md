@@ -5,6 +5,27 @@ sidebar:
   order: 1
 ---
 
+## Running from Source
+
+To run Condrix natively (for development with hot-reload):
+
+```bash
+# Prerequisites: Node.js 22+, npm 10+, Git
+git clone https://github.com/anastawfik/condrix.git
+cd condrix
+npm install
+npm run build
+```
+
+Then start Core and Web Client in separate terminals:
+
+```bash
+npm run dev:core    # Starts Core daemon on port 9100
+npm run dev:web     # Starts Web Client on port 5173
+```
+
+Open `http://localhost:5173` in your browser.
+
 ## npm Scripts
 
 All commands are run from the monorepo root.

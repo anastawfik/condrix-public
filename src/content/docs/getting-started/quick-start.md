@@ -7,59 +7,14 @@ sidebar:
 
 ## Prerequisites
 
-- **Node.js 22+** — Required for all native services
-- **npm 10+** — Comes with Node.js 22
+- **Docker & Docker Compose** — For running Condrix services
 - **Git** — For cloning repositories and workspace management
-- **Docker & Docker Compose** (optional) — For containerized deployment
 
-## Option 1: Native Installation
+:::tip[Want to develop Condrix itself?]
+If you're contributing to Condrix or running from source, see the [Development Commands](/development/commands/) page for native setup with hot-reload.
+:::
 
-Clone the repository and install dependencies:
-
-```bash
-git clone https://github.com/anastawfik/condrix.git
-cd condrix
-npm install
-```
-
-Build all packages:
-
-```bash
-npm run build
-```
-
-Start the Core daemon:
-
-```bash
-npm run dev:core
-```
-
-In a separate terminal, start the Web Client:
-
-```bash
-npm run dev:web
-```
-
-Open your browser to `http://localhost:5173`. You should see the Condrix web interface. The Core will be listed in the sidebar — click it to connect.
-
-### Configure an AI Provider
-
-Before you can start an AI agent session, the Core needs at least one AI provider connection. Condrix supports **Claude**, **OpenAI**, **Ollama** (local), and any **OpenAI-compatible endpoint**.
-
-1. Open **Settings** (gear icon) in the web client
-2. Navigate to the **AI** tab
-3. Click **Add Connection** and choose a provider:
-   - **Claude (OAuth)** — Sign in with your Claude account (recommended)
-   - **Claude (API Key)** — Paste an Anthropic API key
-   - **OpenAI** — Paste an OpenAI API key
-   - **Local** — Connect to Ollama or LM Studio (default: `localhost:11434`)
-   - **Custom** — Any OpenAI-compatible endpoint with a custom base URL
-4. Follow the provider-specific prompts to complete setup
-5. The Core is now authenticated and ready to create agent sessions
-
-For advanced configuration — including fallback chains and per-project profiles — see [AI Providers](/getting-started/ai-providers/).
-
-## Option 2: Docker Compose
+## Start with Docker Compose
 
 Create a `docker-compose.yml` file:
 
@@ -103,7 +58,24 @@ Start all services:
 docker compose up -d
 ```
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:5173` in your browser. The Core will be listed in the sidebar — click it to connect.
+
+## Configure an AI Provider
+
+Before you can start an AI agent session, the Core needs at least one AI provider connection. Condrix supports **Claude**, **OpenAI**, **Ollama** (local), and any **OpenAI-compatible endpoint**.
+
+1. Open **Settings** (gear icon) in the web client
+2. Navigate to the **AI** tab
+3. Click **Add Connection** and choose a provider:
+   - **Claude (OAuth)** — Sign in with your Claude account (recommended)
+   - **Claude (API Key)** — Paste an Anthropic API key
+   - **OpenAI** — Paste an OpenAI API key
+   - **Local** — Connect to Ollama or LM Studio (default: `localhost:11434`)
+   - **Custom** — Any OpenAI-compatible endpoint with a custom base URL
+4. Follow the provider-specific prompts to complete setup
+5. The Core is now ready to create agent sessions
+
+For advanced configuration — including fallback chains and per-project profiles — see [AI Providers](/getting-started/ai-providers/).
 
 ## Default Ports
 
