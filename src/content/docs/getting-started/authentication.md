@@ -128,36 +128,61 @@ Only admins can perform destructive or configuration-changing actions.
 
 ## Core ↔ Maestro Registration
 
-When a Core connects to Maestro, it must authenticate with a valid access token stored on the Maestro side. There are **two ways** to establish this trust:
+When a Core connects to Maestro, it must authenticate with a valid access token that Maestro recognizes. Cores connect **inbound** to Maestro — the Core initiates the WebSocket connection using `CONDRIX_MAESTRO_URL` and `CONDRIX_MAESTRO_TOKEN`.
 
-### Method 1: Maestro Registers the Core (Admin-Initiated)
+There are **two ways** to establish the initial trust:
 
-An admin registers a Core from the Maestro UI:
+### Method 1: Admin Pre-Registers the Core
+
+An admin creates a Core record in Maestro with a pre-generated token, then hands the token to the Core operator:
 
 1. Sign in to Maestro as an admin
 2. Open **Settings** → **Cores** (Maestro mode)
 3. Click **Register Core**
-4. Enter the Core's tunnel URL and a display name
-5. Maestro generates an access token — copy it
-6. On the Core machine, set `CONDRIX_CORE_TOKEN=<copied-token>` and start the Core
-7. Maestro connects outbound to the Core using the token
+4. Enter a Core ID and display name
+5. Maestro generates an **access token** — copy it
+6. On the Core machine, set the token as `CONDRIX_MAESTRO_TOKEN`:
+   ```powershell
+   $env:CONDRIX_MAESTRO_URL="wss://maestro.example.com"
+   $env:CONDRIX_MAESTRO_TOKEN="<copied-token>"
+   npm run dev:core
+   ```
+7. The Core connects inbound to Maestro and authenticates using the pre-shared token
 
-Use this method when you control both machines and want to pair them manually.
+Use this method when an admin wants to pre-approve specific Cores individually.
 
-### Method 2: Core Self-Registers (Invite-Token Flow)
+### Method 2: Self-Registration via Invite Token
 
-A Maestro admin generates a **registration token** (invite code), and the Core uses it to self-register:
+A Maestro admin generates a **registration token** (invite code), and any Core using that invite code can self-register. On first connect, Maestro issues a **permanent access token** to replace the invite code:
 
 1. Admin signs in to Maestro and opens **Settings** → **Cores**
 2. Scrolls to **Registration Tokens** section
-3. Clicks **Generate Token**, gives it a name (e.g., `dev-machine`)
-4. Copies the generated token
-5. Core admin sets `CONDRIX_MAESTRO_URL` and `CONDRIX_MAESTRO_TOKEN=<registration-token>` on the Core
-6. On first connect, Maestro recognizes the invite code, registers the Core, and issues a **permanent access token**
+3. Clicks **Generate Token**, gives it a name (e.g., `dev-machines`)
+4. Copies the generated invite token
+5. Core admin sets the invite token as `CONDRIX_MAESTRO_TOKEN`:
+   ```powershell
+   $env:CONDRIX_MAESTRO_URL="wss://maestro.example.com"
+   $env:CONDRIX_MAESTRO_TOKEN="<invite-token>"
+   npm run dev:core
+   ```
+6. On first connect, Maestro recognizes the invite code, creates a Core record, and issues a **permanent access token**
 7. The Core stores the permanent token in its database (`maestro.token` setting)
-8. Subsequent restarts use the permanent token automatically — the invite code is no longer needed
+8. Subsequent restarts use the permanent token automatically — you can unset `CONDRIX_MAESTRO_TOKEN` or leave it; the DB setting takes priority
 
-This is the recommended approach for self-service Core onboarding.
+This is the recommended approach for self-service Core onboarding because a single invite token can be reused across multiple Cores (until `max_uses` is reached).
+
+### CONDRIX_CORE_TOKEN vs CONDRIX_MAESTRO_TOKEN
+
+These are often confused — they represent opposite directions of authentication:
+
+| Env Var | Direction | Purpose |
+|---------|-----------|---------|
+| **`CONDRIX_MAESTRO_TOKEN`** | Core → Maestro | Core's credential to authenticate **itself to Maestro** (inbound Core→Maestro connection) |
+| **`CONDRIX_CORE_TOKEN`** | Client/Maestro → Core | Pre-seeds an auth token in the Core's `auth_tokens` table. Clients (or Maestro via outbound) use this token to authenticate **to the Core** |
+
+When you register a Core from Maestro's UI and copy the generated token, you're getting the **Core→Maestro** credential — set it as `CONDRIX_MAESTRO_TOKEN`.
+
+`CONDRIX_CORE_TOKEN` is only needed in advanced setups where something needs to connect **to** your Core with a known token (e.g., Maestro outbound connections to a Core behind a tunnel).
 
 ### Registration Tokens
 
