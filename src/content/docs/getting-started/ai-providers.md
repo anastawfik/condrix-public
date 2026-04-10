@@ -1,11 +1,24 @@
 ---
 title: AI Providers
-description: Configure multiple AI providers with connections, profiles, and automatic fallback chains
+description: Configure AI providers and assign them to projects with connections, profiles, and fallback chains.
 sidebar:
   order: 4
 ---
 
-Condrix supports multiple AI providers through a flexible **Connections + Profiles** architecture. You can use Claude, OpenAI, local models via Ollama or LM Studio, or any OpenAI-compatible endpoint — and configure automatic fallback between them.
+This page covers how to configure AI providers (Claude, OpenAI, Ollama, etc.), create reusable profiles with fallback chains, and assign providers to individual projects.
+
+For authentication between Condrix components (clients, Cores, Maestro), see [Authentication](/getting-started/authentication/).
+
+## Overview
+
+Condrix supports multiple AI providers through a **Connections + Profiles** architecture:
+
+- **Connection** — A single authenticated link to a provider (e.g., "My Claude Plan", "Work OpenAI Key")
+- **Profile** — A named preset with a primary connection and an ordered fallback chain
+- **Per-project assignment** — Each project can use a different profile (or a direct connection)
+- **Workspace-level model selection** — Within a workspace, you can pick a specific model from the active connection's model list
+
+This lets you mix providers freely — for example, use Claude for production code, Ollama for local experiments, and OpenAI as a fallback when Claude hits a rate limit.
 
 ## Supported Providers
 
@@ -165,13 +178,7 @@ Within a workspace or chat session, you can select a specific model from the act
 
 Model selection is per-workspace and does not change the profile or connection configuration.
 
-## Architecture
+## What's Next?
 
-Under the hood, the multi-provider system consists of:
-
-- **AI Connection Manager** (`ai-connection-manager.ts`) — Stores and manages connection credentials, handles provider-specific authentication flows
-- **OpenAI Provider** (`openai-provider.ts`) — Implements the OpenAI-compatible API client used by OpenAI, Local, and Custom connections
-- **Tool Format Adapter** (`tool-format-adapter.ts`) — Translates Condrix's internal tool definitions to each provider's expected format
-- **AI Connection Schema** (`ai-connection.ts` in `@condrix/protocol`) — Shared type definitions for connections, profiles, and fallback triggers
-
-The Claude provider continues to use the Claude Code CLI subprocess for OAuth connections, ensuring full compatibility with Claude's extended thinking and beta features.
+- [Authentication](/getting-started/authentication/) — Connect clients, Cores, and Maestro
+- [Monorepo Structure](/development/monorepo-structure/) — How the multi-provider system is organized in the codebase

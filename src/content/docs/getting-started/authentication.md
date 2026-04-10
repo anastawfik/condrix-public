@@ -1,225 +1,208 @@
 ---
 title: Authentication
-description: How Condrix authenticates with AI providers and secures Core access.
+description: How Condrix authenticates clients, Cores, and Maestro connections.
 sidebar:
   order: 3
 ---
 
-Condrix supports multiple AI providers and uses a layered authentication model: **AI Connections** for provider credentials, **AI Profiles** for routing and fallback, and **Core tokens** for machine-to-machine trust.
+This page covers authentication **between Condrix components** — how clients connect to Cores, how Cores register with Maestro, and how users log in to Maestro.
 
-## AI Connections
+For authenticating with **AI providers** (Claude, OpenAI, Ollama, etc.), see [AI Providers](/getting-started/ai-providers/).
 
-An AI Connection stores credentials for a single AI provider. You can create as many connections as you need — one per provider, or several for the same provider with different keys.
+## Authentication Layers
 
-### Creating a Connection
+Condrix has three independent authentication layers:
 
-1. Open **Settings** (gear icon) in the web client
-2. Navigate to the **AI** tab
-3. Under **Connections**, click **Add Connection**
-4. Choose a provider and fill in the required fields
+| Layer | Who Authenticates | Mechanism |
+|-------|-------------------|-----------|
+| **Client ↔ Core** | Client to Core WebSocket | Core access token (per-machine) |
+| **Client ↔ Maestro** | User to Maestro | Username + password + optional TOTP |
+| **Core ↔ Maestro** | Core to Maestro | Registration token → permanent access token |
 
-Each provider requires different credentials:
+Each layer is independent. Revoking access at one layer does not affect the others.
 
-| Provider | Auth Method | Required Fields |
-|----------|-------------|-----------------|
-| **Claude** (OAuth) | Browser sign-in | Claude account |
-| **Claude** (API Key) | API key | `sk-ant-api03-...` |
-| **OpenAI** | API key | `sk-...` |
-| **Local** (Ollama / LM Studio) | None | Base URL (default: `http://localhost:11434/v1`) |
-| **Custom** | API key (optional) | Base URL + optional API key |
+## Core Access Tokens
 
-### Fallback Triggers
+Every Core requires a valid **access token** to accept WebSocket connections. The token authorizes the holder to interact with that specific Core — run agents, read files, execute terminal commands, etc.
 
-Each connection can define conditions under which Condrix should automatically switch to the next connection in a fallback chain:
+### Token Storage
 
-| Trigger | Description |
-|---------|-------------|
-| `rate_limit` | Provider returned a 429 rate limit response |
-| `quota_exceeded` | Account usage quota has been exhausted |
-| `auth_error` | Credentials are invalid or expired |
-| `timeout` | Request timed out waiting for a response |
-| `server_error` | Provider returned a 5xx server error |
+Access tokens are stored in the Core's SQLite database (`~/.condrix/core.db`, table `auth_tokens`). Each token has:
 
-When a trigger fires, Condrix moves to the next connection in the profile's fallback chain without interrupting the user's session.
+- A unique value (64-character hex string by default)
+- A name (e.g., `default-admin`, `core-access`)
+- A set of scopes (permissions)
+- Optional expiry timestamp
+- Optional TOTP 2FA
 
-## AI Profiles
+### Generating Tokens
 
-An AI Profile is a named preset that defines a **primary connection** and an optional **fallback chain** of additional connections. Profiles let you configure routing strategies without reconfiguring individual workspaces.
+Tokens are created automatically on Core startup:
 
-### Creating a Profile
-
-1. Open **Settings** → **AI** tab
-2. Under **Profiles**, click **Add Profile**
-3. Select a **primary connection** (the default provider for this profile)
-4. Optionally add **fallback connections** in priority order
-5. Give the profile a descriptive name (e.g., "Production", "Local Dev", "Cost-Optimized")
-
-### Example Profiles
-
-**"Production"** — Claude first, OpenAI as backup:
-- Primary: Claude (OAuth)
-- Fallback 1: OpenAI (API Key)
-- Triggers: `rate_limit`, `quota_exceeded`, `server_error`
-
-**"Local Dev"** — Ollama for free local inference:
-- Primary: Ollama (localhost:11434)
-- No fallback
-
-**"Cost-Optimized"** — Local first, cloud as fallback:
-- Primary: Ollama (local)
-- Fallback 1: Claude (API Key)
-- Triggers: `timeout`, `server_error`
-
-### Per-Project Assignment
-
-You can assign an AI Profile to each project individually:
-
-1. Open **Settings** → **Projects** tab
-2. Select a project
-3. Choose an **AI Profile** from the dropdown
-4. All workspaces in that project use the assigned profile by default
-
-### Workspace-Level Model Selection
-
-Within a workspace or chat session, you can select a specific model from the active connection's available models. This is useful when a provider offers multiple models (e.g., `gpt-4o` vs `gpt-4o-mini`, or `claude-sonnet-4-20250514` vs `claude-haiku-4-20250414`).
-
-Model selection happens at the workspace/chat level and does not affect the profile or connection configuration.
-
-## Provider Setup
-
-### Claude (OAuth)
-
-OAuth is the recommended method for Claude. It uses your existing Claude account — no API keys to create or manage.
-
-**How it works:**
-
-Condrix authenticates using the same OAuth flow as the Claude Code CLI. Each Core runs a Claude CLI subprocess that handles token acquisition, refresh, and request signing.
-
-**Sign-in flow:**
-
-1. Open the **Web Client** and connect to your Core
-2. Go to **Settings** → **AI** → **Connections**
-3. Click **Add Connection** and select **Claude (OAuth)**
-4. Click **Sign In with Claude**
-5. Your browser opens the Claude authorization page
-6. Sign in with your Claude account and approve the request
-7. Paste the authorization code back into the dialog
-8. The Core exchanges the code for access and refresh tokens
-
-**Token lifecycle:**
-
-| Token | Format | Lifetime | Purpose |
-|-------|--------|----------|---------|
-| Access Token | `sk-ant-oat01-...` | Short-lived | Authenticates API requests |
-| Refresh Token | `sk-ant-ort01-...` | Long-lived | Obtains new access tokens |
-
-The Core automatically refreshes expired access tokens. You should rarely need to re-authenticate manually.
-
-**Required OAuth scopes:**
-
-- `user:inference` — Send messages to Claude
-- `user:profile` — Read account information
-- `user:sessions:claude_code` — Create Claude Code sessions
-- `user:mcp_servers` — Access MCP server configurations
-
-### Claude (API Key)
-
-For development or when OAuth is not available, you can provide a Claude API key directly.
-
-1. Go to **Settings** → **AI** → **Connections**
-2. Click **Add Connection** and select **Claude (API Key)**
-3. Paste your API key (`sk-ant-api03-...`)
-
-Alternatively, set the key as an environment variable:
-
-```bash
-export CONDRIX_CORE_CLAUDE_API_KEY=sk-ant-api03-...
-```
-
-### OpenAI
-
-1. Go to **Settings** → **AI** → **Connections**
-2. Click **Add Connection** and select **OpenAI**
-3. Paste your OpenAI API key (`sk-...`)
-4. The connection auto-discovers available models from the OpenAI API
-
-### Local (Ollama / LM Studio)
-
-For free, private, local inference using any OpenAI-compatible server.
-
-1. Start your local model server (e.g., `ollama serve` or launch LM Studio)
-2. Go to **Settings** → **AI** → **Connections**
-3. Click **Add Connection** and select **Local**
-4. The base URL defaults to `http://localhost:11434/v1` — adjust if your server uses a different port
-5. No API key is required for local servers
-
-**Supported local servers:**
-
-- [Ollama](https://ollama.ai) — Default, runs models locally with minimal setup
-- [LM Studio](https://lmstudio.ai) — GUI-based local model server
-- Any server exposing an OpenAI-compatible `/v1/chat/completions` endpoint
-
-### Custom (OpenAI-Compatible)
-
-For any other provider that exposes an OpenAI-compatible API (e.g., Azure OpenAI, Together AI, Groq, Fireworks).
-
-1. Go to **Settings** → **AI** → **Connections**
-2. Click **Add Connection** and select **Custom**
-3. Enter the **Base URL** (e.g., `https://api.together.xyz/v1`)
-4. Enter your **API Key** if the endpoint requires one
-5. The connection queries the endpoint's `/models` route to discover available models
-
-## Core Authentication
+- **Dev mode** — No token required for local (non-tunneled) connections. This is the default when running via `npm run dev:core`.
+- **Production mode** — The Core generates a `default-admin` token on first startup and prints it to stdout. Save this token — you'll need it to connect from a client.
+- **CONDRIX_CORE_TOKEN env var** — Pre-seed a known token at startup (see below).
 
 ### CONDRIX_CORE_TOKEN
 
-The `CONDRIX_CORE_TOKEN` environment variable pre-seeds an authentication token on Core startup. This is used for Maestro outbound connections and automated deployments where browser-based auth is not possible.
+The `CONDRIX_CORE_TOKEN` environment variable pre-seeds an auth token when the Core starts. This is useful for:
+
+- **Automated deployments** where you need a known token value before the Core boots
+- **Maestro outbound connections** where Maestro needs a token to authenticate to the Core
+- **Docker/systemd setups** where injecting secrets via env vars is the standard pattern
 
 ```bash
-export CONDRIX_CORE_TOKEN=your-pre-seeded-token
-npm run dev:core
+# PowerShell
+$env:CONDRIX_CORE_TOKEN="my-pre-seeded-token"; npm run dev:core
+
+# Bash
+CONDRIX_CORE_TOKEN=my-pre-seeded-token npm run dev:core
 ```
 
-See [Environment Variables](/deployment/environment-variables/) for the complete reference.
-
-### Registration Tokens
-
-When a Core connects to Maestro, it authenticates using a **registration token** (invite code). This replaces the previous shared-secret approach with a more secure invite-based flow:
-
-1. A Maestro admin generates a registration token in the Maestro UI
-2. The Core admin sets the token as `CONDRIX_MAESTRO_TOKEN`
-3. The Core presents the token during registration
-4. Maestro validates the token and issues a **permanent access token** to the Core
-5. The Core stores the permanent token and uses it for all subsequent connections
-
-The registration token is single-use. Once the Core receives its permanent token, the registration token is no longer needed.
+If the token already exists in `auth_tokens`, nothing happens (idempotent). Otherwise it's inserted with all scopes.
 
 ### Token Rotation
 
-Maestro admins can rotate a Core's access token from the Maestro UI at any time. This is useful when:
+Tokens can be rotated at any time:
 
-- A Core's token may have been compromised
-- An admin wants to enforce periodic credential rotation
-- A Core is being decommissioned and its token should be invalidated
+- **Via Core API** — The `auth.rotateToken` route replaces an existing token with a new value, preserving metadata (name, scopes, TOTP).
+- **Via Maestro UI** — Maestro admins can rotate a Core's access token from the Cores settings panel. If the Core is connected via an outbound tunnel, the rotation is pushed automatically. Otherwise, the new token is displayed for manual update.
 
-After rotation, the Core automatically receives the new token on its next connection.
+### TOTP 2FA
+
+Each Core access token can optionally require a TOTP code for authentication. Setup:
+
+1. Open the Core Terminal in the web client
+2. Run `condrix-core auth totp setup <token-name>`
+3. Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password, etc.)
+4. Run `condrix-core auth totp enable <token-name> <6-digit-code>` to confirm
+
+Once enabled, clients must provide a valid TOTP code along with the access token to authenticate.
+
+## Maestro User Authentication
+
+Maestro has its own user database, separate from Core auth tokens. Users log in with username and password (plus optional TOTP) and receive a session token that authorizes subsequent requests.
+
+### Default Admin
+
+On first startup, Maestro creates a `default-admin` user and prints the generated password to stdout. Save this — it's your initial login credential.
+
+### Sign In
+
+1. Open the web client
+2. Click **Sign In to Condrix** (or **Connect to Maestro** in the Cores settings)
+3. Enter the Maestro URL (e.g., `wss://maestro.condrix.dev`)
+4. Enter username and password
+5. If TOTP is enabled on your account, enter the 6-digit code when prompted
+6. On success, a session token is stored in `localStorage` and the web client stays authenticated across page reloads
+
+### Sessions
+
+Maestro sessions expire after **7 days** by default. When a session expires or the user clicks **Sign Out**, the token is invalidated and the user must re-authenticate.
+
+### Changing Your Password
+
+1. Sign in to Maestro
+2. Open **Settings** → **Account** tab
+3. Enter current password and new password
+4. Click **Update Password**
+
+### Enabling TOTP
+
+1. Open **Settings** → **Account** tab
+2. Under **Two-Factor Authentication**, click **Setup TOTP**
+3. Scan the QR code with an authenticator app
+4. Enter a test code to confirm
+5. TOTP is now required at every sign-in
+
+### User Roles
+
+Maestro supports two roles:
+
+| Role | Permissions |
+|------|-------------|
+| **admin** | Full access: register/remove/rename Cores, rotate tokens, manage registration tokens, manage AI config, create/delete users |
+| **user** | Read-only access to Cores and workspaces they are authorized for |
+
+Only admins can perform destructive or configuration-changing actions.
+
+## Core ↔ Maestro Registration
+
+When a Core connects to Maestro, it must authenticate with a valid access token stored on the Maestro side. There are **two ways** to establish this trust:
+
+### Method 1: Maestro Registers the Core (Admin-Initiated)
+
+An admin registers a Core from the Maestro UI:
+
+1. Sign in to Maestro as an admin
+2. Open **Settings** → **Cores** (Maestro mode)
+3. Click **Register Core**
+4. Enter the Core's tunnel URL and a display name
+5. Maestro generates an access token — copy it
+6. On the Core machine, set `CONDRIX_CORE_TOKEN=<copied-token>` and start the Core
+7. Maestro connects outbound to the Core using the token
+
+Use this method when you control both machines and want to pair them manually.
+
+### Method 2: Core Self-Registers (Invite-Token Flow)
+
+A Maestro admin generates a **registration token** (invite code), and the Core uses it to self-register:
+
+1. Admin signs in to Maestro and opens **Settings** → **Cores**
+2. Scrolls to **Registration Tokens** section
+3. Clicks **Generate Token**, gives it a name (e.g., `dev-machine`)
+4. Copies the generated token
+5. Core admin sets `CONDRIX_MAESTRO_URL` and `CONDRIX_MAESTRO_TOKEN=<registration-token>` on the Core
+6. On first connect, Maestro recognizes the invite code, registers the Core, and issues a **permanent access token**
+7. The Core stores the permanent token in its database (`maestro.token` setting)
+8. Subsequent restarts use the permanent token automatically — the invite code is no longer needed
+
+This is the recommended approach for self-service Core onboarding.
+
+### Registration Tokens
+
+Registration tokens are one-time or multi-use invite codes that let Cores join a Maestro without a pre-shared secret. Each token has:
+
+- A name (for admin reference)
+- Optional `max_uses` limit (null = unlimited)
+- Optional expiration timestamp
+- Usage counter
+
+Once used, the token remains in the database for audit purposes but can be revoked by the admin at any time. Revoking a registration token does not invalidate already-issued permanent tokens.
+
+### Permanent Tokens
+
+After a successful registration, the Core receives a permanent access token (64-char hex) that replaces the invite code. This token:
+
+- Is stored in the Core's `maestro.token` DB setting (takes priority over `CONDRIX_MAESTRO_TOKEN` env var)
+- Is used for all subsequent Core↔Maestro connections
+- Can be rotated by a Maestro admin at any time
+
+### Inbound vs Outbound Connections
+
+The registration flow supports both connection directions:
+
+- **Inbound** (Core → Maestro) — Core opens a WebSocket to Maestro. Used when Maestro is publicly reachable (e.g., hosted on a VPS with Cloudflare Tunnel).
+- **Outbound** (Maestro → Core) — Maestro opens a WebSocket to the Core's tunnel URL. Used when the Core is behind a Cloudflare Tunnel with a persistent URL.
+
+Both directions use the same token mechanism. The choice is determined by `connection_mode` on the Core's Maestro record.
 
 ## Core Terminal
 
-Each Core provides a built-in terminal accessible from the web client. This terminal runs on the Core's host machine and can be used for administrative tasks:
+Each Core provides a built-in terminal accessible from the web client. This terminal runs on the Core's host machine with the Core's privileges. Use it for:
 
-- Checking authentication status
+- Running `condrix-core auth` commands (list tokens, enable TOTP, etc.)
 - Viewing Core logs
-- Running Git commands in workspaces
-- Installing system dependencies
+- Administrative tasks on the Core machine
 
 Access it from the **Terminal** panel in the web client's right sidebar.
 
 ## Security Considerations
 
-- OAuth tokens are stored in `~/.claude/.credentials.json` on the Core's host machine
-- API keys and connection credentials are stored in the Core's SQLite database
-- Tokens and keys are never sent to clients — the Core proxies all AI requests
-- Each Core authenticates independently — revoking access to one Core does not affect others
-- For remote Cores, always use [Cloudflare Tunnel](/deployment/cloudflare-tunnel/) or another encrypted transport
-- Local provider connections (Ollama, LM Studio) never leave your machine
+- **Core tokens** are stored unencrypted in SQLite. Protect `~/.condrix/core.db` with filesystem permissions.
+- **Maestro sessions** are stored in browser `localStorage`. Clear them on logout, and avoid using Condrix on shared devices without signing out.
+- **Registration tokens** should be treated as secrets. Don't commit them to version control.
+- **Tunneled connections** (via Cloudflare Tunnel) always require token authentication, even in dev mode.
+- **Dev mode** bypasses auth for local (non-tunneled) connections to the Core. Never enable dev mode on production Cores exposed to the network.
+- **TLS everywhere** — When connecting over a network, use `wss://` (via Cloudflare Tunnel or reverse proxy with TLS). Never send tokens over unencrypted `ws://` to a remote Core.
+- **Rotate regularly** — Even without compromise, rotate tokens periodically. Maestro's UI makes this a one-click operation.
