@@ -17,7 +17,7 @@ Condrix has three independent authentication layers:
 |-------|-------------------|-----------|
 | **Client ↔ Core** | Client to Core WebSocket | Core access token (per-machine) |
 | **Client ↔ Maestro** | User to Maestro | Username + password + optional TOTP |
-| **Core ↔ Maestro** | Core to Maestro | Registration token → permanent access token |
+| **Core ↔ Maestro** | Core to Maestro | 6-char pairing code → permanent access token |
 
 Each layer is independent. Revoking access at one layer does not affect the others.
 
@@ -121,7 +121,7 @@ Maestro supports two roles:
 
 | Role | Permissions |
 |------|-------------|
-| **admin** | Full access: register/remove/rename Cores, rotate tokens, manage registration tokens, manage AI config, create/delete users |
+| **admin** | Full access: pair/remove/rename Cores, rotate tokens, generate pairing codes, manage AI config, create/delete users |
 | **user** | Read-only access to Cores and workspaces they are authorized for |
 
 Only admins can perform destructive or configuration-changing actions.
@@ -130,46 +130,33 @@ Only admins can perform destructive or configuration-changing actions.
 
 When a Core connects to Maestro, it must authenticate with a valid access token that Maestro recognizes. Cores connect **inbound** to Maestro — the Core initiates the WebSocket connection using `CONDRIX_MAESTRO_URL` and `CONDRIX_MAESTRO_TOKEN`.
 
-There are **two ways** to establish the initial trust:
+Condrix has a single unified way to attach a Core to Maestro: short, human-friendly **pairing codes**.
 
-### Method 1: Admin Pre-Registers the Core
-
-An admin creates a Core record in Maestro with a pre-generated token, then hands the token to the Core operator:
+### Pairing a Core
 
 1. Sign in to Maestro as an admin
-2. Open **Settings** → **Cores** (Maestro mode)
-3. Click **Register Core**
-4. Enter a Core ID and display name
-5. Maestro generates an **access token** — copy it
-6. On the Core machine, set the token as `CONDRIX_MAESTRO_TOKEN`:
+2. Open **Settings** → **Cores**
+3. Scroll to the **Pair a Core** section
+4. Click **Generate Pairing Code**
+5. Maestro returns a **6-character alphanumeric pairing code** (mixed case, e.g., `Ky7R9m`)
+6. On the Core machine, set the code as `CONDRIX_MAESTRO_TOKEN` and start the Core:
    ```powershell
    $env:CONDRIX_MAESTRO_URL="wss://maestro.example.com"
-   $env:CONDRIX_MAESTRO_TOKEN="<copied-token>"
+   $env:CONDRIX_MAESTRO_TOKEN="Ky7R9m"
    npm run dev:core
    ```
-7. The Core connects inbound to Maestro and authenticates using the pre-shared token
-
-Use this method when an admin wants to pre-approve specific Cores individually.
-
-### Method 2: Self-Registration via Invite Token
-
-A Maestro admin generates a **registration token** (invite code), and any Core using that invite code can self-register. On first connect, Maestro issues a **permanent access token** to replace the invite code:
-
-1. Admin signs in to Maestro and opens **Settings** → **Cores**
-2. Scrolls to **Registration Tokens** section
-3. Clicks **Generate Token**, gives it a name (e.g., `dev-machines`)
-4. Copies the generated invite token
-5. Core admin sets the invite token as `CONDRIX_MAESTRO_TOKEN`:
-   ```powershell
-   $env:CONDRIX_MAESTRO_URL="wss://maestro.example.com"
-   $env:CONDRIX_MAESTRO_TOKEN="<invite-token>"
+   Or on bash:
+   ```bash
+   CONDRIX_MAESTRO_URL=wss://maestro.example.com \
+   CONDRIX_MAESTRO_TOKEN=Ky7R9m \
    npm run dev:core
    ```
-6. On first connect, Maestro recognizes the invite code, creates a Core record, and issues a **permanent access token**
-7. The Core stores the permanent token in its database (`maestro.token` setting)
+7. On first connect, Maestro swaps the pairing code for a **permanent access token** and stores it in the Core's database (`maestro.token` setting)
 8. Subsequent restarts use the permanent token automatically — you can unset `CONDRIX_MAESTRO_TOKEN` or leave it; the DB setting takes priority
 
-This is the recommended approach for self-service Core onboarding because a single invite token can be reused across multiple Cores (until `max_uses` is reached).
+Pairing codes are **single-use** by default (consumed after the first successful registration) and **expire after 15 minutes**. Admins can optionally make codes multi-use or change the expiry via the Maestro API, but the default UI flow is single-use / 15-minute.
+
+The previous "Register Core" button has been removed — pairing codes are now the only way to attach a new Core. Existing Cores registered before this change continue to work without any migration.
 
 ### CONDRIX_CORE_TOKEN vs CONDRIX_MAESTRO_TOKEN
 
@@ -180,37 +167,21 @@ These are often confused — they represent opposite directions of authenticatio
 | **`CONDRIX_MAESTRO_TOKEN`** | Core → Maestro | Core's credential to authenticate **itself to Maestro** (inbound Core→Maestro connection) |
 | **`CONDRIX_CORE_TOKEN`** | Client/Maestro → Core | Pre-seeds an auth token in the Core's `auth_tokens` table. Clients (or Maestro via outbound) use this token to authenticate **to the Core** |
 
-When you register a Core from Maestro's UI and copy the generated token, you're getting the **Core→Maestro** credential — set it as `CONDRIX_MAESTRO_TOKEN`.
+When you generate a pairing code from Maestro's UI, you're getting the **Core→Maestro** credential — set it as `CONDRIX_MAESTRO_TOKEN` on the Core.
 
 `CONDRIX_CORE_TOKEN` is only needed in advanced setups where something needs to connect **to** your Core with a known token (e.g., Maestro outbound connections to a Core behind a tunnel).
 
-### Registration Tokens
-
-Registration tokens are one-time or multi-use invite codes that let Cores join a Maestro without a pre-shared secret. Each token has:
-
-- A name (for admin reference)
-- Optional `max_uses` limit (null = unlimited)
-- Optional expiration timestamp
-- Usage counter
-
-Once used, the token remains in the database for audit purposes but can be revoked by the admin at any time. Revoking a registration token does not invalidate already-issued permanent tokens.
-
 ### Permanent Tokens
 
-After a successful registration, the Core receives a permanent access token (64-char hex) that replaces the invite code. This token:
+After a successful pairing, the Core receives a permanent access token (64-char hex) that replaces the pairing code. This token:
 
 - Is stored in the Core's `maestro.token` DB setting (takes priority over `CONDRIX_MAESTRO_TOKEN` env var)
 - Is used for all subsequent Core↔Maestro connections
 - Can be rotated by a Maestro admin at any time
 
-### Inbound vs Outbound Connections
+### Inbound Connection
 
-The registration flow supports both connection directions:
-
-- **Inbound** (Core → Maestro) — Core opens a WebSocket to Maestro. Used when Maestro is publicly reachable (e.g., hosted on a VPS with Cloudflare Tunnel).
-- **Outbound** (Maestro → Core) — Maestro opens a WebSocket to the Core's tunnel URL. Used when the Core is behind a Cloudflare Tunnel with a persistent URL.
-
-Both directions use the same token mechanism. The choice is determined by `connection_mode` on the Core's Maestro record.
+Pairing always uses an **inbound** connection: the Core initiates the WebSocket to Maestro using `CONDRIX_MAESTRO_URL` and `CONDRIX_MAESTRO_TOKEN`. This works whenever Maestro is publicly reachable (e.g., hosted on a VPS with Cloudflare Tunnel).
 
 ## Core Terminal
 
@@ -226,7 +197,7 @@ Access it from the **Terminal** panel in the web client's right sidebar.
 
 - **Core tokens** are stored unencrypted in SQLite. Protect `~/.condrix/core.db` with filesystem permissions.
 - **Maestro sessions** are stored in browser `localStorage`. Clear them on logout, and avoid using Condrix on shared devices without signing out.
-- **Registration tokens** should be treated as secrets. Don't commit them to version control.
+- **Pairing codes** should be treated as secrets. Don't commit them to version control, share them over insecure channels, or log them in plain text.
 - **Tunneled connections** (via Cloudflare Tunnel) always require token authentication, even in dev mode.
 - **Dev mode** bypasses auth for local (non-tunneled) connections to the Core. Never enable dev mode on production Cores exposed to the network.
 - **TLS everywhere** — When connecting over a network, use `wss://` (via Cloudflare Tunnel or reverse proxy with TLS). Never send tokens over unencrypted `ws://` to a remote Core.

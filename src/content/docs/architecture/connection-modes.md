@@ -102,23 +102,40 @@ CONDRIX_MAESTRO_URL=ws://maestro-host:9200 npm run dev:core
 
 ### Core Registration Flow
 
-Cores authenticate with Maestro using **registration tokens** (invite codes). There are two registration paths:
+Cores attach to Maestro using short **pairing codes** — 6-character alphanumeric strings (mixed case, e.g., `Ky7R9m`) generated on demand by a Maestro admin. The pairing code is swapped for a permanent access token on first connect.
 
-**From Maestro (admin-initiated):**
+```
+┌─────────┐                 ┌──────────┐                ┌──────────┐
+│  Admin  │                 │ Maestro  │                │   Core   │
+└────┬────┘                 └────┬─────┘                └────┬─────┘
+     │                           │                           │
+     │ 1. Generate Pairing Code  │                           │
+     ├──────────────────────────►│                           │
+     │                           │                           │
+     │ 2. "Ky7R9m" (valid 15m)   │                           │
+     │◄──────────────────────────┤                           │
+     │                           │                           │
+     │ 3. Set CONDRIX_MAESTRO_TOKEN=Ky7R9m, start Core       │
+     ├───────────────────────────────────────────────────────►
+     │                           │                           │
+     │                           │ 4. Connect + present code │
+     │                           │◄──────────────────────────┤
+     │                           │                           │
+     │                           │ 5. Issue permanent token  │
+     │                           ├──────────────────────────►│
+     │                           │                           │
+     │                           │                           │ 6. Store in DB
+     │                           │                           │    (maestro.token)
+```
 
-1. A Maestro admin registers a Core by providing its URL and a registration token
-2. Maestro connects to the Core and validates the token
-3. The Core is added to the registry
+1. Admin signs in to Maestro, opens **Settings → Cores**, and clicks **Generate Pairing Code** in the **Pair a Core** section
+2. Maestro returns a 6-character code (valid for 15 minutes, single-use by default)
+3. Core admin sets the code as `CONDRIX_MAESTRO_TOKEN` in the Core's environment and starts the Core
+4. The Core connects inbound to Maestro and presents the pairing code
+5. Maestro validates the code, creates a Core record, and issues a **permanent access token** (64-char hex)
+6. The Core stores the permanent token in its database (`maestro.token` setting). The pairing code is consumed and cannot be reused
 
-**From Core (self-registration):**
-
-1. A Maestro admin generates a registration token (invite code) in the Maestro UI
-2. The Core admin sets the token as `CONDRIX_MAESTRO_TOKEN` in the Core's environment
-3. The Core connects to Maestro and presents the registration token
-4. Maestro validates the token and issues a **permanent access token** to the Core
-5. The Core stores the permanent token and uses it for all subsequent connections
-
-The registration token is single-use — once a Core has received its permanent token, the invite code is consumed. Maestro admins can rotate a Core's permanent token at any time from the Maestro UI.
+Subsequent restarts use the permanent token automatically — the `CONDRIX_MAESTRO_TOKEN` env var is no longer required. Maestro admins can rotate a Core's permanent token at any time from the Maestro UI.
 
 See [Security](/architecture/security/) for details on token rotation and the `CONDRIX_CORE_TOKEN` environment variable.
 
